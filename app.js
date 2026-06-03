@@ -266,6 +266,10 @@ function downloadVideo() {
   const url = urlInput.value.trim();
   const taskId = Date.now().toString();
 
+  // Check if this format has a direct download_url (TikTok/Instagram CDN)
+  const fmt = videoInfo.video_formats?.find(f => f.format_id == selectedFormatId);
+  const isDirectUrl = !!fmt?.download_url;
+
   let endpoint;
   if (currentPlatform === 'tiktok') {
     endpoint = `${getBackendUrl()}/tiktok/download?url=${encodeURIComponent(url)}&format_id=${selectedFormatId}&task_id=${taskId}`;
@@ -277,7 +281,13 @@ function downloadVideo() {
 
   // Open in new tab IMMEDIATELY (must be synchronous from click event to avoid popup block)
   window.open(endpoint, '_blank', 'noopener,noreferrer');
-  startProgressPolling(taskId);
+
+  if (isDirectUrl) {
+    // Direct CDN download — no backend processing, just show brief feedback
+    startDirectDownloadFeedback();
+  } else {
+    startProgressPolling(taskId);
+  }
 }
 
 // ===== Download Audio =====
@@ -290,6 +300,21 @@ function downloadAudio() {
   // Open in new tab IMMEDIATELY (must be synchronous from click event to avoid popup block)
   window.open(endpoint, '_blank', 'noopener,noreferrer');
   startProgressPolling(taskId);
+}
+
+// ===== Direct Download Feedback (TikTok/Instagram CDN — no backend polling) =====
+function startDirectDownloadFeedback() {
+  isDownloading = true;
+  setDownloadBtnsDisabled(true);
+  showProgress(true);
+  updateProgress(1, 'Download dimulai! Cek folder Downloads kamu.');
+  document.querySelector('.result-inner').classList.add('has-content');
+
+  setTimeout(() => {
+    showProgress(false);
+    isDownloading = false;
+    setDownloadBtnsDisabled(false);
+  }, 3000);
 }
 
 // ===== Progress Polling (UI only, download handled by window.open) =====
