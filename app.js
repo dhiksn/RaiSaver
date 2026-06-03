@@ -164,7 +164,8 @@ function renderVideoCard(data) {
 
     const thumb = document.getElementById('videoThumbnail');
     if (data.thumbnail) {
-      const src = currentPlatform === 'instagram'
+      const needsProxy = currentPlatform === 'instagram' || currentPlatform === 'tiktok';
+      const src = needsProxy
         ? `${getBackendUrl()}/proxy-image?url=${encodeURIComponent(data.thumbnail)}`
         : data.thumbnail;
       thumb.src = src;
