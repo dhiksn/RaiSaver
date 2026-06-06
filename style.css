@@ -215,3 +215,40 @@ body{display:flex;flex-direction:column}
   .download-row{flex-direction:column}
   .dl-btn{width:100%}
 }
+
+/* ===== CAPTION INSTAGRAM ===== */
+.caption-wrap{margin-top:10px;padding:10px 12px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:9px}
+.caption-text{font-size:13px;color:var(--muted);line-height:1.6;white-space:pre-wrap;overflow:hidden;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:4}
+.caption-text.expanded{display:block;-webkit-line-clamp:unset}
+.caption-toggle{margin-top:6px;background:none;border:none;color:#fff;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;padding:0;letter-spacing:0.2px}
+.caption-toggle:hover{opacity:0.7}
+
+/* ===== DOWNLOAD ALL ===== */
+.section-sublabel{font-size:12px;color:var(--muted);margin-bottom:10px;margin-top:-4px}
+
+/* ===== PROGRESS — speed & total ===== */
+.progress-header{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500;color:var(--muted);flex-wrap:wrap}
+.progress-total{color:#fff;font-size:13px;font-weight:500}
+.progress-speed{margin-left:auto;padding:3px 8px;background:rgba(255,255,255,0.06);border:1px solid var(--border2);border-radius:6px;font-size:11px;font-weight:600;color:#fff;white-space:nowrap}
+
+/* ===== BACKEND BADGE ===== */
+.modal-header{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.modal-header h3{font-size:16px;font-weight:600;letter-spacing:-0.2px;margin-right:auto}
+.backend-mode-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:5px;font-size:10px;font-weight:700;letter-spacing:0.8px;text-transform:uppercase}
+.backend-mode-badge.local{background:rgba(0,204,102,0.12);border:1px solid rgba(0,204,102,0.35);color:#00cc66}
+.backend-mode-badge.remote{background:rgba(0,153,255,0.12);border:1px solid rgba(0,153,255,0.35);color:#0099ff}
+.backend-mode-badge.custom{background:rgba(255,255,255,0.06);border:1px solid var(--border2);color:var(--muted)}
+.backend-mode-badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block}
+
+/* Quick btns active state */
+.quick-btn{display:flex;align-items:center;gap:6px}
+.quick-btn.active{border-color:rgba(255,255,255,0.4);background:rgba(255,255,255,0.09);color:#fff}
+.mode-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+
+/* FAB badge */
+.fab-settings{position:fixed;bottom:24px;right:24px;z-index:50}
+.fab-badge-wrap{position:relative;display:inline-block}
+.fab-mode-dot{position:absolute;top:-3px;right:-3px;width:9px;height:9px;border-radius:50%;border:2px solid var(--bg)}
+.fab-mode-dot.local{background:#00cc66}
+.fab-mode-dot.remote{background:#0099ff}
+.fab-mode-dot.custom{background:rgba(255,255,255,0.5)}

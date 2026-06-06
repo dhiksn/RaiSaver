@@ -3,8 +3,6 @@ const DEFAULT_BACKEND_URL = 'https://backend-raisaver.dhiksn.my.id';
 const LOCAL_BACKEND_URL   = 'http://127.0.0.1:8000';
 
 function getBackendUrl() {
-  // sessionStorage takes priority (survives refresh on same tab),
-  // fallback to localStorage (persists across tabs/windows on same origin)
   return sessionStorage.getItem('backendUrl')
       || localStorage.getItem('backendUrl')
       || DEFAULT_BACKEND_URL;
@@ -14,6 +12,34 @@ function setBackendUrl(url) {
   const clean = url.replace(/\/$/, '');
   localStorage.setItem('backendUrl', clean);
   sessionStorage.setItem('backendUrl', clean);
+  updateBackendBadge();
+}
+
+function getBackendMode() {
+  const url = getBackendUrl();
+  if (url === LOCAL_BACKEND_URL) return 'local';
+  if (url === DEFAULT_BACKEND_URL) return 'remote';
+  return 'custom';
+}
+
+function updateBackendBadge() {
+  const mode = getBackendMode();
+  const labelMap = { local: 'LOCAL', remote: 'REMOTE', custom: 'CUSTOM' };
+
+  // FAB dot
+  const dot = document.getElementById('fabModeDot');
+  if (dot) { dot.className = `fab-mode-dot ${mode}`; }
+
+  // Modal badge
+  const badge = document.getElementById('backendModeBadge');
+  if (badge) {
+    badge.className = `backend-mode-badge ${mode}`;
+    badge.textContent = labelMap[mode];
+  }
+
+  // Quick btn active state
+  document.getElementById('btnLocal')?.classList.toggle('active', mode === 'local');
+  document.getElementById('btnRemote')?.classList.toggle('active', mode === 'remote');
 }
 
 // ===== State =====
@@ -189,6 +215,29 @@ function renderVideoCard(data) {
   document.getElementById('videoTitle').textContent   = data.title   || 'Unknown Title';
   document.getElementById('videoChannel').textContent = data.channel || 'Unknown';
 
+  // Caption Instagram (expandable)
+  const captionWrap = document.getElementById('captionWrap');
+  const captionText = document.getElementById('captionText');
+  const captionToggle = document.getElementById('captionToggle');
+  if (currentPlatform === 'instagram' && data.description) {
+    let desc = data.description.trim();
+    // Hapus baris pertama kalau sama dengan title
+    const firstLine = desc.split('\n')[0].trim();
+    if (firstLine === (data.title || '').trim()) {
+      desc = desc.substring(firstLine.length).trimStart();
+    }
+    if (desc) {
+      captionText.textContent = desc;
+      captionText.classList.remove('expanded');
+      captionToggle.textContent = 'Selengkapnya';
+      captionWrap.style.display = 'block';
+    } else {
+      captionWrap.style.display = 'none';
+    }
+  } else {
+    captionWrap.style.display = 'none';
+  }
+
   // Low-res warning (YouTube only)
   const lowResWarn = document.getElementById('lowResWarning');
   if (currentPlatform === 'youtube' && data.video_formats?.length) {
@@ -233,9 +282,24 @@ function renderVideoCard(data) {
   });
   updateDownloadBtnLabel();
 
-  // Audio section (YouTube only)
-  document.getElementById('audioSection').style.display =
-    currentPlatform === 'youtube' ? 'block' : 'none';
+  // Audio section (YouTube & TikTok)
+                document.getElementById('audioSection').style.display =
+                    (currentPlatform === 'youtube' || (currentPlatform === 'tiktok' && !data.is_photo)) ? 'block' : 'none';
+
+  // Download All section (carousel/slideshow)
+  const dlAllSection = document.getElementById('downloadAllSection');
+  const dlAllCount   = document.getElementById('downloadAllCount');
+  const fmts = data.video_formats || [];
+  const hasApi  = fmts.some(f => f.format_id?.startsWith('api_'));
+  const hasImg  = fmts.some(f => f.format_id?.startsWith('img_'));
+  const showAll = (currentPlatform === 'instagram' && hasApi && fmts.length > 1)
+               || (currentPlatform === 'tiktok'    && hasImg && fmts.length > 1);
+  if (showAll) {
+    dlAllCount.textContent = `${fmts.length} item akan diunduh sebagai ZIP`;
+    dlAllSection.style.display = 'block';
+  } else {
+    dlAllSection.style.display = 'none';
+  }
 
   videoCard.style.display = 'block';
   document.querySelector('.result-inner').classList.add('has-content');
@@ -296,7 +360,13 @@ function downloadAudio() {
   if (isDownloading || !videoInfo) return;
   const url = urlInput.value.trim();
   const taskId = Date.now().toString();
-  const endpoint = `${getBackendUrl()}/download/audio?url=${encodeURIComponent(url)}&task_id=${taskId}`;
+  let endpoint;
+  
+  if (currentPlatform === 'tiktok') {
+    endpoint = `${getBackendUrl()}/tiktok/download/mp3?url=${encodeURIComponent(url)}&task_id=${taskId}`;
+  } else {
+    endpoint = `${getBackendUrl()}/download/audio?url=${encodeURIComponent(url)}&task_id=${taskId}`;
+  }
 
   // Open in new tab IMMEDIATELY (must be synchronous from click event to avoid popup block)
   window.open(endpoint, '_blank', 'noopener,noreferrer');
@@ -308,7 +378,7 @@ function startDirectDownloadFeedback() {
   isDownloading = true;
   setDownloadBtnsDisabled(true);
   showProgress(true);
-  updateProgress(1, 'Download dimulai! Cek folder Downloads kamu.');
+  updateProgress(1, 'Download dimulai! Cek folder Downloads kamu.', '', '');
   document.querySelector('.result-inner').classList.add('has-content');
 
   setTimeout(() => {
@@ -333,15 +403,17 @@ function startProgressPolling(taskId) {
       const data = await res.json();
       const status = data.status || 'starting';
       const prog   = parseFloat(data.progress || 0);
+      const speed  = data.speed  || '';
+      const total  = data.total  || '';
 
       if (status === 'downloading') {
-        updateProgress(prog, `Downloading: ${(prog * 100).toFixed(1)}%`);
+        updateProgress(prog, 'Mengunduh', total, speed);
       } else if (status === 'processing') {
-        updateProgressIndeterminate('Merging Video & Audio with FFmpeg...');
+        updateProgressIndeterminate('Menggabungkan video & audio...');
       } else if (status === 'completed') {
         completed = true;
         clearInterval(progressInterval);
-        updateProgress(1, 'Download complete! Check your Downloads folder.');
+        updateProgress(1, 'Selesai! Cek folder Downloads kamu.', '', '');
         setTimeout(() => {
           showProgress(false);
           isDownloading = false;
@@ -414,25 +486,33 @@ function showProgress(show) {
   progressCard.style.display = show ? 'flex' : 'none';
 }
 
-function updateProgress(value, statusMsg) {
+function updateProgress(value, statusMsg, total = '', speed = '') {
   const fill = document.getElementById('progressFill');
   const pct  = document.getElementById('progressPercent');
   const stat = document.getElementById('progressStatus');
+  const tot  = document.getElementById('progressTotal');
+  const spd  = document.getElementById('progressSpeed');
 
   fill.classList.remove('indeterminate');
   fill.style.width = `${Math.round(value * 100)}%`;
   pct.textContent  = `${Math.round(value * 100)}%`;
   stat.textContent = statusMsg;
+  if (tot) tot.textContent = total;
+  if (spd) { spd.textContent = speed; spd.style.display = speed ? 'inline-flex' : 'none'; }
 }
 
 function updateProgressIndeterminate(statusMsg) {
   const fill = document.getElementById('progressFill');
   const pct  = document.getElementById('progressPercent');
   const stat = document.getElementById('progressStatus');
+  const spd  = document.getElementById('progressSpeed');
+  const tot  = document.getElementById('progressTotal');
 
   fill.classList.add('indeterminate');
   pct.textContent  = '—';
   stat.textContent = statusMsg;
+  if (tot) tot.textContent = '';
+  if (spd) spd.style.display = 'none';
 }
 
 function setDownloadBtnsDisabled(disabled) {
@@ -454,6 +534,7 @@ function formatDuration(seconds) {
 function openSettings() {
   document.getElementById('settingsBackendUrl').value = getBackendUrl();
   document.getElementById('settingsModal').style.display = 'flex';
+  updateBackendBadge();
 }
 
 function closeSettings() {
@@ -465,19 +546,46 @@ function saveSettings() {
   if (!val) return;
   setBackendUrl(val);
   closeSettings();
-  showToast('Backend URL saved!');
+  showToast('Backend URL disimpan!');
 }
 
 function useLocal() {
   document.getElementById('settingsBackendUrl').value = LOCAL_BACKEND_URL;
   setBackendUrl(LOCAL_BACKEND_URL);
-  showToast('Switched to Local backend');
+  updateBackendBadge();
+  showToast('Beralih ke Local backend');
 }
 
 function useRemote() {
   document.getElementById('settingsBackendUrl').value = DEFAULT_BACKEND_URL;
   setBackendUrl(DEFAULT_BACKEND_URL);
-  showToast('Switched to Remote backend');
+  updateBackendBadge();
+  showToast('Beralih ke Remote backend');
+}
+
+// ===== Caption Toggle =====
+function toggleCaption() {
+  const text   = document.getElementById('captionText');
+  const toggle = document.getElementById('captionToggle');
+  const expanded = text.classList.toggle('expanded');
+  toggle.textContent = expanded ? 'Lebih sedikit' : 'Selengkapnya';
+}
+
+// ===== Download All (carousel/slideshow ZIP) =====
+function downloadAll() {
+  if (isDownloading || !videoInfo) return;
+  const url    = urlInput.value.trim();
+  const taskId = Date.now().toString();
+  let endpoint;
+
+  if (currentPlatform === 'instagram') {
+    endpoint = `${getBackendUrl()}/instagram/download/all?url=${encodeURIComponent(url)}&task_id=${taskId}`;
+  } else if (currentPlatform === 'tiktok') {
+    endpoint = `${getBackendUrl()}/tiktok/download/all?url=${encodeURIComponent(url)}&task_id=${taskId}`;
+  } else return;
+
+  window.open(endpoint, '_blank', 'noopener,noreferrer');
+  startProgressPolling(taskId);
 }
 
 function showToast(msg) {
@@ -491,3 +599,6 @@ function showToast(msg) {
 document.getElementById('settingsModal').addEventListener('click', function(e) {
   if (e.target === this) closeSettings();
 });
+
+// Init badge saat load
+updateBackendBadge();

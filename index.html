@@ -89,6 +89,11 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
           <span id="videoChannel">Channel</span>
         </div>
+        <!-- Caption Instagram (expandable) -->
+        <div class="caption-wrap" id="captionWrap" style="display:none;">
+          <p class="caption-text" id="captionText"></p>
+          <button class="caption-toggle" id="captionToggle" onclick="toggleCaption()">Selengkapnya</button>
+        </div>
       </div>
       <div class="warning-banner" id="lowResWarning" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -116,12 +121,24 @@
           Download MP3
         </button>
       </div>
+      <!-- Download All (carousel/slideshow) -->
+      <div class="download-section" id="downloadAllSection" style="display:none;">
+        <div class="divider" style="margin:0 0 16px;"></div>
+        <p class="section-label">Semua Foto</p>
+        <p class="section-sublabel" id="downloadAllCount"></p>
+        <button class="dl-btn btn-outline full-width" onclick="downloadAll()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Download Semua (ZIP)
+        </button>
+      </div>
     </div>
 
     <div class="progress-card" id="progressCard" style="display:none;">
       <div class="progress-header">
         <div class="spinner small"></div>
         <span id="progressStatus">Memulai download...</span>
+        <span class="progress-total" id="progressTotal"></span>
+        <span class="progress-speed" id="progressSpeed"></span>
       </div>
       <div class="progress-bar-track">
         <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
@@ -156,23 +173,31 @@
 </footer>
 
 <div class="fab-settings">
-  <button class="fab-btn" onclick="openSettings()" title="Pengaturan Backend">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-  </button>
+  <div class="fab-badge-wrap">
+    <button class="fab-btn" onclick="openSettings()" title="Pengaturan Backend">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+    <span class="fab-mode-dot" id="fabModeDot"></span>
+  </div>
 </div>
 
 <div class="modal-backdrop" id="settingsModal" style="display:none;">
   <div class="modal-box">
     <div class="modal-header">
       <h3>Pengaturan Backend</h3>
+      <span class="backend-mode-badge" id="backendModeBadge"></span>
       <button class="modal-close" onclick="closeSettings()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
     <p class="modal-desc">Atur URL backend. Gunakan Local saat menjalankan server Python di mesin kamu, atau Remote untuk server Railway.</p>
     <div class="quick-btns">
-      <button class="quick-btn" onclick="useLocal()">Local (127.0.0.1:8000)</button>
-      <button class="quick-btn" onclick="useRemote()">Remote (backend)</button>
+      <button class="quick-btn" id="btnLocal" onclick="useLocal()">
+        <span class="mode-dot" style="background:#00cc66"></span>Local
+      </button>
+      <button class="quick-btn" id="btnRemote" onclick="useRemote()">
+        <span class="mode-dot" style="background:#0099ff"></span>Remote
+      </button>
     </div>
     <div class="modal-input-group">
       <label for="settingsBackendUrl">Custom URL</label>
