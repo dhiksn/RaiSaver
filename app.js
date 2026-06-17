@@ -190,9 +190,8 @@ function renderVideoCard(data) {
 
     const thumb = document.getElementById('videoThumbnail');
     if (data.thumbnail) {
-      // Proxy all thumbnails through our backend to avoid CORS/mixed-content issues
-      const backendBase = window.location.protocol === 'https:' ? '/api' : 'http://node4.dayy.web.id:5536';
-      const src = `${backendBase}/proxy-image?url=${encodeURIComponent(data.thumbnail)}`;
+      // Proxy all thumbnails through backend to avoid CORS/mixed-content issues
+      const src = `${getBackendUrl()}/proxy-image?url=${encodeURIComponent(data.thumbnail)}`;
       thumb.src = src;
       thumb.style.display = 'block';
       thumbnailWrapper.style.display = 'block';
