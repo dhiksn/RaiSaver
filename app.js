@@ -1,6 +1,6 @@
 // ===== Config =====
 const DEFAULT_BACKEND_URL = 'https://backend-raisaver.dhiksn.my.id';
-const LOCAL_BACKEND_URL   = 'http://127.0.0.1:8000';
+const LOCAL_BACKEND_URL   = 'http://node4.dayy.web.id:5536';
 
 function getBackendUrl() {
   return sessionStorage.getItem('backendUrl')
@@ -283,8 +283,13 @@ function renderVideoCard(data) {
   updateDownloadBtnLabel();
 
   // Audio section (YouTube & TikTok)
-                document.getElementById('audioSection').style.display =
-                    (currentPlatform === 'youtube' || (currentPlatform === 'tiktok' && !data.is_photo)) ? 'block' : 'none';
+  const audioSec = document.getElementById('audioSection');
+  if (currentPlatform === 'youtube' || (currentPlatform === 'tiktok' && !data.is_photo)) {
+    audioSec.style.display = 'block';
+    document.getElementById('audioDownloadLabel').textContent = currentPlatform === 'youtube' ? 'Download M4A' : 'Download MP3';
+  } else {
+    audioSec.style.display = 'none';
+  }
 
   // Download All section (carousel/slideshow)
   const dlAllSection = document.getElementById('downloadAllSection');
