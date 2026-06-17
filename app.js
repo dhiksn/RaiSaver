@@ -1,6 +1,6 @@
 // ===== Config =====
 const DEFAULT_BACKEND_URL = 'https://backend-raisaver.dhiksn.my.id';
-const LOCAL_BACKEND_URL   = 'http://node4.dayy.web.id:5536';
+const LOCAL_BACKEND_URL = window.location.protocol === 'https:' ? '/api' : 'http://node4.dayy.web.id:5536';
 
 function getBackendUrl() {
   return sessionStorage.getItem('backendUrl')
