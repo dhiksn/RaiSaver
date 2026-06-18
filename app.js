@@ -49,6 +49,11 @@ let selectedFormatId = null;
 let isDownloading = false;
 let progressInterval = null;
 
+// ===== Spotify helpers =====
+function isSpotifyTrack(url) {
+  return url.includes('open.spotify.com/track');
+}
+
 // ===== DOM refs =====
 const urlInput       = document.getElementById('urlInput');
 const fetchBtn       = document.getElementById('fetchBtn');
@@ -70,6 +75,7 @@ document.querySelectorAll('.nav-tab-btn').forEach(btn => {
       youtube:   'Paste link YouTube di sini...',
       tiktok:    'Paste link TikTok di sini...',
       instagram: 'Paste link Instagram di sini...',
+      spotify:   'Paste link Spotify track di sini...',
     };
     urlInput.placeholder = placeholders[currentPlatform];
 
@@ -78,9 +84,10 @@ document.querySelectorAll('.nav-tab-btn').forEach(btn => {
       youtube:   { main: 'Unduh YouTube',   sub: 'No Watermark' },
       tiktok:    { main: 'Unduh TikTok',    sub: 'No Watermark' },
       instagram: { main: 'Unduh Instagram', sub: 'No Watermark' },
+      spotify:   { main: 'Unduh Spotify',   sub: 'Free MP3' },
     };
     const t = heroTitles[currentPlatform];
-    const titleEl  = document.querySelector('.hero-title');
+    const titleEl   = document.querySelector('.hero-title');
     const titleMain = document.getElementById('heroTitleMain');
     const titleSub  = document.getElementById('heroTitleSub');
     const heroDesc  = document.getElementById('heroDesc');
@@ -92,6 +99,7 @@ document.querySelectorAll('.nav-tab-btn').forEach(btn => {
       youtube:   'Download video YouTube dalam kualitas terbaik, gratis dan cepat.',
       tiktok:    'Download video TikTok tanpa watermark, langsung ke perangkat kamu.',
       instagram: 'Download Reels & foto Instagram dengan mudah dan cepat.',
+      spotify:   'Download lagu Spotify sebagai MP3 berkualitas tinggi, gratis.',
     };
     if (heroDesc) heroDesc.textContent = descs[currentPlatform];
 
@@ -114,11 +122,13 @@ async function fetchInfo() {
   const isYT  = url.includes('youtube.com') || url.includes('youtu.be');
   const isTT  = url.includes('tiktok.com') || url.includes('vt.tiktok.com');
   const isIG  = url.includes('instagram.com');
+  const isSP  = isSpotifyTrack(url);
 
   if (currentPlatform === 'youtube' && !isYT) {
     return showError(
       isTT ? 'This is a TikTok link! Switch to the TikTok tab.' :
       isIG ? 'This is an Instagram link! Switch to the Instagram tab.' :
+      isSP ? 'This is a Spotify link! Switch to the Spotify tab.' :
              'Please paste a valid YouTube link.'
     );
   }
@@ -126,11 +136,18 @@ async function fetchInfo() {
     return showError(
       isYT ? 'This is a YouTube link! Switch to the YouTube tab.' :
       isIG ? 'This is an Instagram link! Switch to the Instagram tab.' :
+      isSP ? 'This is a Spotify link! Switch to the Spotify tab.' :
              'Please paste a valid TikTok link.'
     );
   }
   if (currentPlatform === 'instagram' && !isIG) {
-    return showError('Please paste a valid Instagram link (Reels, post, etc.).');
+    return showError(
+      isSP ? 'This is a Spotify link! Switch to the Spotify tab.' :
+             'Please paste a valid Instagram link (Reels, post, etc.).'
+    );
+  }
+  if (currentPlatform === 'spotify' && !isSP) {
+    return showError('Please paste a valid Spotify track link (open.spotify.com/track/...).');
   }
 
   resetVideoUI();
@@ -139,9 +156,10 @@ async function fetchInfo() {
 
   try {
     let endpoint;
-    if (currentPlatform === 'tiktok')    endpoint = `${getBackendUrl()}/tiktok/info?url=${encodeURIComponent(url)}`;
+    if (currentPlatform === 'tiktok')         endpoint = `${getBackendUrl()}/tiktok/info?url=${encodeURIComponent(url)}`;
     else if (currentPlatform === 'instagram') endpoint = `${getBackendUrl()}/instagram/info?url=${encodeURIComponent(url)}`;
-    else                                  endpoint = `${getBackendUrl()}/info?url=${encodeURIComponent(url)}`;
+    else if (currentPlatform === 'spotify')   endpoint = `${getBackendUrl()}/spotify/info?url=${encodeURIComponent(url)}`;
+    else                                       endpoint = `${getBackendUrl()}/info?url=${encodeURIComponent(url)}`;
 
     const res = await fetch(endpoint);
     const data = await res.json();
@@ -162,6 +180,12 @@ async function fetchInfo() {
 
 // ===== Render Video Card =====
 function renderVideoCard(data) {
+  // ── Spotify: dedicated minimal card ──────────────────────────────────────
+  if (currentPlatform === 'spotify') {
+    renderSpotifyCard(data);
+    return;
+  }
+
   const isTikTokVideo = currentPlatform === 'tiktok' && !data.is_photo;
   const thumbnailWrapper  = document.getElementById('thumbnailWrapper');
   const tiktokPlayerWrap  = document.getElementById('tiktokPlayerWrapper');
@@ -317,6 +341,76 @@ function renderVideoCard(data) {
   document.querySelector('.result-inner').classList.add('has-content');
 }
 
+// ===== Render Spotify Card =====
+function renderSpotifyCard(data) {
+  const thumb   = data.thumbnail || '';
+  const title   = data.title   || 'Unknown Track';
+  const artist  = data.artist  || '';
+  const album   = data.album   || '';
+  const durSec  = data.duration || 0;
+
+  // Duration: API may return ms or seconds
+  const sec = durSec > 9999 ? Math.floor(durSec / 1000) : durSec;
+  const durStr = sec > 0
+    ? `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
+    : '';
+
+  // Thumbnail
+  const thumbnailWrapper = document.getElementById('thumbnailWrapper');
+  const tiktokPlayerWrap = document.getElementById('tiktokPlayerWrapper');
+  const tiktokPlayer     = document.getElementById('tiktokPlayer');
+  tiktokPlayer.pause(); tiktokPlayer.src = '';
+  tiktokPlayerWrap.style.display = 'none';
+
+  if (thumb) {
+    const backendBase = window.location.protocol === 'https:' ? '/api' : getBackendUrl();
+    document.getElementById('videoThumbnail').src = `${backendBase}/proxy-image?url=${encodeURIComponent(thumb)}`;
+    document.getElementById('videoThumbnail').style.display = 'block';
+    thumbnailWrapper.style.display = 'block';
+  } else {
+    thumbnailWrapper.style.display = 'none';
+  }
+
+  // Duration badge
+  const dur = document.getElementById('durationBadge');
+  if (durStr) { dur.textContent = durStr; dur.style.display = 'inline'; }
+  else { dur.style.display = 'none'; }
+
+  // Title row — show track name as title, artist as "channel"
+  document.getElementById('videoTitle').textContent   = title;
+  document.getElementById('videoChannel').textContent = artist || 'Unknown Artist';
+
+  // Caption: show album name if available
+  const captionWrap   = document.getElementById('captionWrap');
+  const captionText   = document.getElementById('captionText');
+  const captionToggle = document.getElementById('captionToggle');
+  if (album) {
+    captionText.textContent     = `Album: ${album}`;
+    captionToggle.style.display = 'none';
+    captionWrap.style.display   = 'block';
+  } else {
+    captionWrap.style.display = 'none';
+  }
+
+  // Hide irrelevant sections
+  document.getElementById('lowResWarning').style.display  = 'none';
+  document.getElementById('audioSection').style.display   = 'none';
+  document.getElementById('downloadAllSection').style.display = 'none';
+
+  // Format select: single "MP3" option
+  const select = document.getElementById('formatSelect');
+  select.innerHTML = '<option value="mp3">MP3 — Audio</option>';
+  selectedFormatId = 'mp3';
+
+  // Download button label
+  document.getElementById('downloadVideoLabel').textContent = 'MP3';
+  document.getElementById('downloadVideoIcon').innerHTML =
+    '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>';
+
+  videoCard.style.display = 'block';
+  document.querySelector('.result-inner').classList.add('has-content');
+}
+
 function updateDownloadBtnLabel() {
   if (!videoInfo || !selectedFormatId) return;
   const fmt = videoInfo.video_formats?.find(f => f.format_id == selectedFormatId);
@@ -342,6 +436,14 @@ function downloadVideo() {
   if (isDownloading || !videoInfo) return;
   const url = urlInput.value.trim();
   const taskId = Date.now().toString();
+
+  // Spotify: direct MP3 download
+  if (currentPlatform === 'spotify') {
+    const endpoint = `${getBackendUrl()}/spotify/download?url=${encodeURIComponent(url)}&task_id=${taskId}`;
+    window.open(endpoint, '_blank', 'noopener,noreferrer');
+    startProgressPolling(taskId);
+    return;
+  }
 
   // Check if this format has a direct download_url (TikTok/Instagram CDN)
   const fmt = videoInfo.video_formats?.find(f => f.format_id == selectedFormatId);
