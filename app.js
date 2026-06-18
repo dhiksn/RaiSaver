@@ -154,6 +154,14 @@ async function fetchInfo() {
   showLoading(true);
   hideError();
 
+  // Update loading text per platform
+  const loadingText = document.getElementById('loadingText');
+  if (loadingText) {
+    loadingText.textContent = currentPlatform === 'spotify'
+      ? 'Mengambil info lagu...'
+      : 'Mengambil info...';
+  }
+
   try {
     let endpoint;
     if (currentPlatform === 'tiktok')         endpoint = `${getBackendUrl()}/tiktok/info?url=${encodeURIComponent(url)}`;
@@ -347,15 +355,25 @@ function renderSpotifyCard(data) {
   const title   = data.title   || 'Unknown Track';
   const artist  = data.artist  || '';
   const album   = data.album   || '';
-  const durSec  = data.duration || 0;
+  const rawDur  = data.duration;
 
-  // Duration: API may return ms or seconds
-  const sec = durSec > 9999 ? Math.floor(durSec / 1000) : durSec;
-  const durStr = sec > 0
-    ? `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
-    : '';
+  // Duration: handle string "3:45", number seconds, or number ms
+  let durStr = '';
+  if (rawDur) {
+    if (typeof rawDur === 'string' && rawDur.includes(':')) {
+      durStr = rawDur.trim();                                  // already "m:ss"
+    } else {
+      let sec = parseFloat(rawDur);
+      if (!isNaN(sec) && sec > 0) {
+        if (sec > 9999) sec = Math.floor(sec / 1000);         // ms → seconds
+        const m = Math.floor(sec / 60);
+        const s = Math.floor(sec % 60);
+        durStr = `${m}:${String(s).padStart(2, '0')}`;
+      }
+    }
+  }
 
-  // Thumbnail
+  // Thumbnail — proxy through backend
   const thumbnailWrapper = document.getElementById('thumbnailWrapper');
   const tiktokPlayerWrap = document.getElementById('tiktokPlayerWrapper');
   const tiktokPlayer     = document.getElementById('tiktokPlayer');
@@ -363,8 +381,8 @@ function renderSpotifyCard(data) {
   tiktokPlayerWrap.style.display = 'none';
 
   if (thumb) {
-    const backendBase = window.location.protocol === 'https:' ? '/api' : getBackendUrl();
-    document.getElementById('videoThumbnail').src = `${backendBase}/proxy-image?url=${encodeURIComponent(thumb)}`;
+    document.getElementById('videoThumbnail').src =
+      `${getBackendUrl()}/proxy-image?url=${encodeURIComponent(thumb)}`;
     document.getElementById('videoThumbnail').style.display = 'block';
     thumbnailWrapper.style.display = 'block';
   } else {
@@ -376,36 +394,44 @@ function renderSpotifyCard(data) {
   if (durStr) { dur.textContent = durStr; dur.style.display = 'inline'; }
   else { dur.style.display = 'none'; }
 
-  // Title row — show track name as title, artist as "channel"
+  // Title & artist
   document.getElementById('videoTitle').textContent   = title;
   document.getElementById('videoChannel').textContent = artist || 'Unknown Artist';
 
-  // Caption: show album name if available
+  // Album as caption
   const captionWrap   = document.getElementById('captionWrap');
   const captionText   = document.getElementById('captionText');
   const captionToggle = document.getElementById('captionToggle');
   if (album) {
-    captionText.textContent     = `Album: ${album}`;
+    captionText.textContent     = `💿 ${album}`;
     captionToggle.style.display = 'none';
     captionWrap.style.display   = 'block';
   } else {
     captionWrap.style.display = 'none';
   }
 
-  // Hide irrelevant sections
-  document.getElementById('lowResWarning').style.display  = 'none';
-  document.getElementById('audioSection').style.display   = 'none';
+  // Hide sections that don't apply to Spotify
+  document.getElementById('lowResWarning').style.display    = 'none';
+  document.getElementById('audioSection').style.display     = 'none';
   document.getElementById('downloadAllSection').style.display = 'none';
 
-  // Format select: single "MP3" option
-  const select = document.getElementById('formatSelect');
-  select.innerHTML = '<option value="mp3">MP3 — Audio</option>';
-  selectedFormatId = 'mp3';
+  // Hide the format select dropdown — not needed for Spotify (always MP3)
+  document.querySelector('.select-wrapper').style.display = 'none';
 
-  // Download button label
-  document.getElementById('downloadVideoLabel').textContent = 'MP3';
+  // Update section label to "Audio"
+  const sectionLabel = document.querySelector('.download-section .section-label');
+  if (sectionLabel) sectionLabel.textContent = 'Audio';
+
+  // Download button: full-width, MP3 label, music icon
+  const dlRow = document.querySelector('.download-row');
+  if (dlRow) dlRow.style.gap = '0';
+  const dlBtn = document.getElementById('downloadVideoBtn');
+  dlBtn.classList.add('full-width');
+  document.getElementById('downloadVideoLabel').textContent = 'Download MP3';
   document.getElementById('downloadVideoIcon').innerHTML =
     '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>';
+
+  selectedFormatId = 'mp3';
 
   videoCard.style.display = 'block';
   document.querySelector('.result-inner').classList.add('has-content');
@@ -437,9 +463,10 @@ function downloadVideo() {
   const url = urlInput.value.trim();
   const taskId = Date.now().toString();
 
-  // Spotify: direct MP3 download
+  // Spotify: direct MP3 download — strip tracking params first
   if (currentPlatform === 'spotify') {
-    const endpoint = `${getBackendUrl()}/spotify/download?url=${encodeURIComponent(url)}&task_id=${taskId}`;
+    const cleanUrl = url.split('?')[0];
+    const endpoint = `${getBackendUrl()}/spotify/download?url=${encodeURIComponent(cleanUrl)}&task_id=${taskId}`;
     window.open(endpoint, '_blank', 'noopener,noreferrer');
     startProgressPolling(taskId);
     return;
@@ -588,6 +615,20 @@ function resetVideoUI() {
   document.querySelector('.result-inner').classList.remove('has-content');
   videoInfo = null;
   selectedFormatId = null;
+
+  // Reset Spotify-specific DOM changes
+  const selectWrapper = document.querySelector('.select-wrapper');
+  if (selectWrapper) selectWrapper.style.display = '';
+  const sectionLabel = document.querySelector('.download-section .section-label');
+  if (sectionLabel) sectionLabel.textContent = 'Video';
+  const dlBtn = document.getElementById('downloadVideoBtn');
+  if (dlBtn) dlBtn.classList.remove('full-width');
+  const dlRow = document.querySelector('.download-row');
+  if (dlRow) dlRow.style.gap = '';
+  document.getElementById('downloadVideoLabel').textContent = 'MP4';
+  document.getElementById('downloadVideoIcon').innerHTML =
+    '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>';
+
   // Clean up TikTok player
   const tiktokPlayer = document.getElementById('tiktokPlayer');
   if (tiktokPlayer) {
