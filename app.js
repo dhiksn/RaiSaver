@@ -230,6 +230,14 @@ function renderVideoCard(data) {
       captionText.classList.remove('expanded');
       captionToggle.textContent = 'Selengkapnya';
       captionWrap.style.display = 'block';
+
+      // Hide 'Selengkapnya' if text is short
+      const lines = desc.split('\n').length;
+      if (desc.length > 150 || lines > 3) {
+        captionToggle.style.display = 'inline-block';
+      } else {
+        captionToggle.style.display = 'none';
+      }
     } else {
       captionWrap.style.display = 'none';
     }
