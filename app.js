@@ -1,5 +1,5 @@
 // ===== Config =====
-const DEFAULT_BACKEND_URL = window.location.protocol === 'https:' ? '/api' : 'http://node4.dayy.web.id:5536';
+const DEFAULT_BACKEND_URL = window.location.protocol === 'https:' ? '/api' : 'http://node2.gervhosting.my.id:5587';
 const LOCAL_BACKEND_URL = 'http://127.0.0.1:8000';
 
 function getBackendUrl() {
@@ -223,7 +223,7 @@ function renderVideoCard(data) {
     const thumb = document.getElementById('videoThumbnail');
     if (data.thumbnail) {
       // Proxy all thumbnails through our backend to avoid CORS/mixed-content issues
-      const backendBase = window.location.protocol === 'https:' ? '/api' : 'http://node4.dayy.web.id:5536';
+      const backendBase = window.location.protocol === 'https:' ? '/api' : 'http://node2.gervhosting.my.id:5587';
       const src = `${backendBase}/proxy-image?url=${encodeURIComponent(data.thumbnail)}`;
       thumb.src = src;
       thumb.style.display = 'block';
