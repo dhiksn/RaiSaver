@@ -381,8 +381,10 @@ function renderSpotifyCard(data) {
   tiktokPlayerWrap.style.display = 'none';
 
   if (thumb) {
+    // Use same proxy logic as other platforms — respect HTTPS/HTTP context
+    const proxyBase = window.location.protocol === 'https:' ? '/api' : getBackendUrl();
     document.getElementById('videoThumbnail').src =
-      `${getBackendUrl()}/proxy-image?url=${encodeURIComponent(thumb)}`;
+      `${proxyBase}/proxy-image?url=${encodeURIComponent(thumb)}`;
     document.getElementById('videoThumbnail').style.display = 'block';
     thumbnailWrapper.style.display = 'block';
   } else {
@@ -398,12 +400,16 @@ function renderSpotifyCard(data) {
   document.getElementById('videoTitle').textContent   = title;
   document.getElementById('videoChannel').textContent = artist || 'Unknown Artist';
 
-  // Album as caption
+  // Quality + album as caption
   const captionWrap   = document.getElementById('captionWrap');
   const captionText   = document.getElementById('captionText');
   const captionToggle = document.getElementById('captionToggle');
-  if (album) {
-    captionText.textContent     = `💿 ${album}`;
+  const quality = data.quality || '';
+  const parts = [];
+  if (album)   parts.push(`💿 ${album}`);
+  if (quality) parts.push(`✨ ${quality}`);
+  if (parts.length) {
+    captionText.textContent     = parts.join('   ');
     captionToggle.style.display = 'none';
     captionWrap.style.display   = 'block';
   } else {
